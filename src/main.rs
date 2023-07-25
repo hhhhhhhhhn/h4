@@ -1,9 +1,14 @@
+mod insertable;
+
 use rquickjs::{Runtime, Context, Function, Ctx};
 use std::process::Command;
 use std::iter::Peekable;
 use std::boxed::Box;
 use std::collections::HashMap;
 use std::time;
+use insertable::InsertableIterator;
+
+
 
 // NOTE: Read https://stackoverflow.com/questions/9781285/specify-scope-for-eval-in-javascript
 
@@ -13,7 +18,6 @@ enum Value<'a> {
     Plain(String),
     Builtin(fn(&mut H4<'a>, &Vec<String>) -> String),
 }
-
 
 #[derive(PartialEq, Eq, Debug)]
 enum AdvanceResult {
@@ -26,7 +30,7 @@ enum AdvanceResult {
 }
 
 struct H4<'a> {
-    iter: Peekable<Box<dyn Iterator<Item = char>>>,
+    iter: InsertableIterator<char>,
     outputs: HashMap<String, String>,
     current_output: String,
     scopes: Vec<HashMap<String, Value<'a>>>,
@@ -70,13 +74,33 @@ fn builtin_skip(h4: &mut H4, _args: &Vec<String>) -> String {
     return String::new()
 }
 
+fn builtin_dump(h4: &mut H4, _args: &Vec<String>) -> String {
+    for (i, stack) in h4.scopes.iter().enumerate() {
+        println!("Stack {i}:");
+        for (key, value) in stack {
+            match value {
+                Value::Plain(value) => {
+                    println!("{key}: {value}");
+                },
+                Value::Builtin(_) => {
+                    println!("{key}: <Builtin>");
+                }
+                _ => unimplemented!()
+            }
+        }
+    }
+    h4.iter.next();
+    return String::new()
+}
+
 impl<'h> H4<'h> {
     fn new<'a>(iter: Box<dyn Iterator<Item = char>>, ctx: Ctx<'a>) -> H4<'a> {
-            let iter = iter.peekable();
+            let iter = InsertableIterator::new(iter);
             let outputs = HashMap::new();
             let mut global_scope = HashMap::new();
 
             global_scope.insert("@define".to_string(), Value::Builtin(builtin_define));
+            global_scope.insert("@dump".to_string(), Value::Builtin(builtin_dump));
             global_scope.insert("@pushScope".to_string(), Value::Builtin(builtin_push_scope));
             global_scope.insert("@popScope".to_string(), Value::Builtin(builtin_pop_scope));
             global_scope.insert("@skip".to_string(), Value::Builtin(builtin_skip));
@@ -92,7 +116,7 @@ impl<'h> H4<'h> {
                 ctx,
 
                 current_output: "stdout".to_string(),
-                name_chars: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_@".to_string(),
+                name_chars: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_@".to_string(),
                 quote_start: '`',
                 quote_end: '\'',
                 quote_level: 0,
@@ -166,10 +190,20 @@ impl<'h> H4<'h> {
         output.push_str(&str);
     }
 
+    fn insert_input(&mut self, str: String) {
+        self.iter.insert_elements(str.chars().collect());
+    }
+
     fn eval_macro(&mut self, value: &Value<'h>, args: &Vec<String>) -> String {
         match value {
             Value::Plain(str) => {
-                return str.clone()
+                let mut evaluated = "`'@pushScope\n".to_string();
+                for (i, arg) in args.iter().enumerate() {
+                    evaluated.push_str(&format!("@define(`@arg{}', `{}')\n", i, arg).to_string());
+                }
+                evaluated.push_str(str);
+                evaluated.push_str("`'@popScope\n");
+                return evaluated
             }
             Value::Builtin(func) => {
                 return func(self, args)
@@ -232,7 +266,7 @@ impl<'h> H4<'h> {
                         self.current_output = previous_output;
                     }
                     let evaluated = self.eval_macro(&value, &args);
-                    self.write_string(evaluated);
+                    self.insert_input(evaluated);
                     return Some(AdvanceResult::Macro)
                 }
             }
@@ -277,11 +311,11 @@ const TEST: &str = r#"word()
 word
 word
 @pushScope
-@define(`word', `COOL')
-word word()
+@define(`hello', `Hello, @arg0')
+hello(word)
 asd
 @popScope
-word(asdasd, asdasd),
+word(one, two),
 `quoted `quotes word `quotes'' text'
 "#;
 

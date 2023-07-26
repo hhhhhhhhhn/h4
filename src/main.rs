@@ -1,23 +1,16 @@
 mod insertable;
+mod scopes;
 
-use rquickjs::{Runtime, Context, Function, Ctx};
-use std::process::Command;
-use std::iter::Peekable;
+use rquickjs::{Runtime, Context, Ctx};
 use std::boxed::Box;
 use std::collections::HashMap;
 use std::time;
 use insertable::InsertableIterator;
-
+use std::rc::Rc;
+use scopes::{Scopes, Value};
 
 
 // NOTE: Read https://stackoverflow.com/questions/9781285/specify-scope-for-eval-in-javascript
-
-#[derive(Clone)]
-enum Value<'a> {
-    JS(rquickjs::Value<'a>),
-    Plain(String),
-    Builtin(fn(&mut H4<'a>, &Vec<String>) -> String),
-}
 
 #[derive(PartialEq, Eq, Debug)]
 enum AdvanceResult {
@@ -29,12 +22,12 @@ enum AdvanceResult {
     NextArg,
 }
 
-struct H4<'a> {
+pub struct H4<'a> {
     iter: InsertableIterator<char>,
     outputs: HashMap<String, String>,
     current_output: String,
-    scopes: Vec<HashMap<String, Value<'a>>>,
-    ctx: Ctx<'a>,
+    scopes: Rc<Scopes<'a>>,
+    ctx: Rc<Ctx<'a>>,
     quote_level: usize,
     in_call: bool,
 
@@ -52,19 +45,36 @@ fn new_id() -> String {
 }
 
 fn builtin_define(h4: &mut H4, args: &Vec<String>) -> String {
-    h4.let_variable(&args[0], Value::Plain(args[1].clone()));
+    let scopes = Rc::clone(&mut h4.scopes);
+    scopes.let_variable(&args[0], Value::Plain(args[1].clone()));
     h4.iter.next();
     return String::new()
 }
 
+fn builtin_let(h4: &mut H4, args: &Vec<String>) -> String {
+    h4.scopes.let_variable(&args[0], Value::JS(h4.eval_js(args[1].clone())));
+    h4.iter.next();
+    return String::new()
+}
+
+fn builtin_set(h4: &mut H4, args: &Vec<String>) -> String {
+    h4.scopes.set_variable(&args[0], Value::JS(h4.eval_js(args[1].clone())));
+    h4.iter.next();
+    return String::new()
+}
+
+fn builtin_get(h4: &mut H4, args: &Vec<String>) -> String {
+    return builtin_jseval(h4, args)
+}
+
 fn builtin_push_scope(h4: &mut H4, _args: &Vec<String>) -> String {
-    h4.push_scope();
+    h4.scopes.push_scope();
     h4.iter.next();
     return String::new()
 }
 
 fn builtin_pop_scope(h4: &mut H4, _args: &Vec<String>) -> String {
-    h4.pop_scope();
+    h4.scopes.pop_scope();
     h4.iter.next();
     return String::new()
 }
@@ -74,13 +84,23 @@ fn builtin_skip(h4: &mut H4, _args: &Vec<String>) -> String {
     return String::new()
 }
 
+fn builtin_jseval(h4: &mut H4, args: &Vec<String>) -> String {
+    let value = h4.eval_js(args[0].clone());
+    let value = h4.js_value_to_string(value);
+    return value
+}
+
 fn builtin_dump(h4: &mut H4, _args: &Vec<String>) -> String {
-    for (i, stack) in h4.scopes.iter().enumerate() {
+    let scopes = Rc::clone(&h4.scopes.scopes);
+    let scopes = scopes.borrow();
+    for (i, stack) in scopes.iter().enumerate() {
         println!("Stack {i}:");
         for (key, value) in stack {
+            let value = Rc::clone(value);
+            let value = value.borrow().clone();
             match value {
-                Value::Plain(value) => {
-                    println!("{key}: {value}");
+                Value::Plain(str) => {
+                    println!("{key}: {}", str.clone());
                 },
                 Value::Builtin(_) => {
                     println!("{key}: <Builtin>");
@@ -97,23 +117,23 @@ impl<'h> H4<'h> {
     fn new<'a>(iter: Box<dyn Iterator<Item = char>>, ctx: Ctx<'a>) -> H4<'a> {
             let iter = InsertableIterator::new(iter);
             let outputs = HashMap::new();
-            let mut global_scope = HashMap::new();
 
-            global_scope.insert("@define".to_string(), Value::Builtin(builtin_define));
-            global_scope.insert("@dump".to_string(), Value::Builtin(builtin_dump));
-            global_scope.insert("@pushScope".to_string(), Value::Builtin(builtin_push_scope));
-            global_scope.insert("@popScope".to_string(), Value::Builtin(builtin_pop_scope));
-            global_scope.insert("@skip".to_string(), Value::Builtin(builtin_skip));
+            let scopes = Scopes::new();
+            scopes.let_variable(&"@define".to_string(), Value::Builtin(builtin_define));
+            scopes.let_variable(&"@dump".to_string(), Value::Builtin(builtin_dump));
+            scopes.let_variable(&"@pushScope".to_string(), Value::Builtin(builtin_push_scope));
+            scopes.let_variable(&"@popScope".to_string(), Value::Builtin(builtin_pop_scope));
+            scopes.let_variable(&"@skip".to_string(), Value::Builtin(builtin_skip));
+            scopes.let_variable(&"@jsEval".to_string(), Value::Builtin(builtin_jseval));
+            scopes.let_variable(&"@let".to_string(), Value::Builtin(builtin_let));
+            scopes.let_variable(&"@set".to_string(), Value::Builtin(builtin_set));
+            scopes.let_variable(&"@get".to_string(), Value::Builtin(builtin_get));
 
-            let scopes = vec![global_scope];
-            
-            // TODO: Intialize javascript proxy stuff
-
-            return H4{
+            let h4 = H4{
                 iter,
                 outputs,
-                scopes,
-                ctx,
+                scopes: Rc::new(scopes),
+                ctx: Rc::new(ctx),
 
                 current_output: "stdout".to_string(),
                 name_chars: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_@".to_string(),
@@ -121,45 +141,69 @@ impl<'h> H4<'h> {
                 quote_end: '\'',
                 quote_level: 0,
                 in_call: false,
+            };
+
+            h4.setup_quickjs();
+            return h4
+    }
+
+    fn setup_quickjs(&self) {
+        let scopes = self.scopes.clone();
+        let ctx = Rc::clone(&self.ctx);
+
+        ctx.globals()
+            .set("h4GetVariable", rquickjs::Function::new(*ctx.clone(), move |name: String| -> rquickjs::Value {
+                let var = scopes.get_variable(&name);
+                let undefined = rquickjs::Undefined;
+                let undefined = undefined.into_value(*ctx.clone());
+                let value: rquickjs::Value = match var {
+                    None => undefined,
+                    Some(value) => {
+                        let value = Rc::clone(&value);
+                        let value = value.borrow().clone();
+                        match value {
+                            Value::Plain(str) => {
+                                rquickjs::String::from_str(*ctx.clone(), &str).unwrap().into_value()
+                            },
+                            Value::Builtin(..) => {
+                                rquickjs::String::from_str(*ctx.clone(), "<Builtin>").unwrap().into_value()
+                            },
+                            Value::JS(val) => {
+                                val
+                            }
+                        }
+                    }
+                };
+                return value
+            })).ok();
+
+        let ctx = self.ctx.clone();
+        ctx.globals()
+            .set("debugPrint", rquickjs::Function::new(*ctx.clone(), |value: String| {
+                eprintln!("{}", value)
+            })).ok();
+
+        let ctx = self.ctx.clone();
+        _ = ctx.eval::<rquickjs::Value, &str>(r#"
+            let h4Handler = {
+                get(_target, key) {
+                    key = key.toString()
+                    return h4GetVariable(key)
+                },
+
+                has(_target, key) {
+                    key = key.toString()
+                    return h4GetVariable(key) !== undefined
+                }
             }
-    }
 
-    fn get_variable(&self, name: &String) -> Option<&Value<'h>> {
-        for scope in self.scopes.iter().rev() {
-            if let Some(value) = scope.get(name) {
-                return Some(value);
+            let h4Proxy = new Proxy({}, h4Handler)
+
+            function h4Eval(script) {
+                // debugPrint("Evaluating " + script)
+                return Function("h4Proxy", 'with(h4Proxy) {return (' + script + ')}')(h4Proxy);
             }
-        }
-        return None;
-    }
-    
-    fn push_scope(&mut self) {
-        self.scopes.push(HashMap::new());
-    }
-
-    fn pop_scope(&mut self) {
-        assert!(self.scopes.len() > 1, "Cannot pop the global scope, push a new one first!");
-        self.scopes.pop();
-    }
-
-    fn get_variable_mut(&mut self, name: &String) -> Option<&mut Value<'h>> {
-        for scope in self.scopes.iter_mut().rev() {
-            if let Some(value) = scope.get_mut(name) {
-                return Some(value);
-            }
-        }
-        return None;
-    }
-
-    fn set_variable(&mut self, name: &String, value: Value<'h>) -> Option<()> {
-        let var = self.get_variable_mut(name)?;
-        *var = value;
-        return Some(())
-    }
-
-    fn let_variable(&mut self, name: &String, value: Value<'h>) {
-        let scope = self.scopes.last_mut().expect("The scope stack is empty");
-        scope.insert(name.clone(), value);
+        "#).expect("Cannot intialize QuickJS variables")
     }
 
     fn write(&mut self, chr: char) {
@@ -174,6 +218,18 @@ impl<'h> H4<'h> {
         }
         let output = self.outputs.get_mut(&self.current_output).expect("The value was not inserted");
         output.push(chr);
+    }
+
+    fn eval_js(&self, js: String) -> rquickjs::Value<'h> {
+        let value = self.ctx.eval::<rquickjs::Function, &str>("h4Eval").expect("h4Eval not found");
+        let result: rquickjs::Value = value.call((&js,)).expect("Could not evaluate");
+        return result
+    }
+
+    fn js_value_to_string(&self, value: rquickjs::Value<'h>) -> String {
+        let str = self.ctx.eval::<rquickjs::Function, &str>("String").expect("String not found");
+        let result: rquickjs::String = str.call((value,)).expect("Could not evaluate");
+        return result.to_string().unwrap_or_else(|_| "<QuickJS Error>".to_string());
     }
 
     fn write_string(&mut self, str: String) {
@@ -233,7 +289,7 @@ impl<'h> H4<'h> {
         }
         if self.name_chars.contains(chr) {
             let name = self.consume_name();
-            let variable = self.get_variable(&name).map(|x| x.clone());
+            let variable = self.scopes.get_variable(&name).map(|x| x.clone());
             match variable {
                 None => {
                     self.write_string(name);
@@ -265,7 +321,7 @@ impl<'h> H4<'h> {
                         }
                         self.current_output = previous_output;
                     }
-                    let evaluated = self.eval_macro(&value, &args);
+                    let evaluated = self.eval_macro(&value.borrow(), &args);
                     self.insert_input(evaluated);
                     return Some(AdvanceResult::Macro)
                 }
@@ -306,17 +362,25 @@ impl<'h> H4<'h> {
     }
 }
 
-const TEST: &str = r#"word()
-@define(`word', `AMAZING')
+const TEST: &str = r#"
+word()
+@define(`word', `APPLE')
 word
 word
 @pushScope
+@define(word, `BANANA')
 @define(`hello', `Hello, @arg0')
 hello(word)
-asd
+Some text
 @popScope
 word(one, two),
 `quoted `quotes word `quotes'' text'
+
+@let(`value', `1*4')
+@jsEval(`value')
+@set(`value', `2*3')
+@jsEval(`value')
+@jsEval(`JSON.stringify(value)')
 "#;
 
 fn main() {
@@ -325,7 +389,6 @@ fn main() {
     let iter = TEST.chars();
     context.with(|ctx| {
         let mut h4 = H4::new(Box::new(iter), ctx);
-        h4.let_variable(&"word".to_string(), Value::Plain("WORD".to_string()));
         for _ in 0..1000 {
             h4.advance();
         }

@@ -7,7 +7,7 @@ use std::cell::RefCell;
 pub enum Value<'a> {
     JS(rquickjs::Value<'a>),
     Plain(String),
-    Builtin(fn(&mut H4<'a>, &Vec<String>) -> String),
+    Builtin(fn(&mut H4<'a, '_>, &Vec<String>) -> String),
 }
 
 #[derive(Clone)]

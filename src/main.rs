@@ -22,8 +22,8 @@ enum AdvanceResult {
     NextArg,
 }
 
-pub struct H4<'a> {
-    iter: InsertableIterator<char>,
+pub struct H4<'a, 'b> {
+    iter: InsertableIterator<'b, char>,
     outputs: HashMap<String, String>,
     current_output: String,
     scopes: Rc<Scopes<'a>>,
@@ -113,9 +113,8 @@ fn builtin_dump(h4: &mut H4, _args: &Vec<String>) -> String {
     return String::new()
 }
 
-impl<'h> H4<'h> {
-    fn new<'a>(iter: Box<dyn Iterator<Item = char>>, ctx: Ctx<'a>) -> H4<'a> {
-            let iter = InsertableIterator::new(iter);
+impl<'h, 'b> H4<'h, 'b> {
+    fn new(iter: InsertableIterator<'b, char>, ctx: Ctx<'h>) -> H4<'h, 'b> {
             let outputs = HashMap::new();
 
             let scopes = Scopes::new();
@@ -362,33 +361,16 @@ impl<'h> H4<'h> {
     }
 }
 
-const TEST: &str = r#"
-word()
-@define(`word', `APPLE')
-word
-word
-@pushScope
-@define(word, `BANANA')
-@define(`hello', `Hello, @arg0')
-hello(word)
-Some text
-@popScope
-word(one, two),
-`quoted `quotes word `quotes'' text'
-
-@let(`value', `1*4')
-@jsEval(`value')
-@set(`value', `2*3')
-@jsEval(`value')
-@jsEval(`JSON.stringify(value)')
-"#;
-
 fn main() {
     let runtime = Runtime::new().unwrap();
     let context = Context::full(&runtime).unwrap();
-    let iter = TEST.chars();
-    context.with(|ctx| {
-        let mut h4 = H4::new(Box::new(iter), ctx);
+    let stdin = std::io::read_to_string(std::io::stdin()).unwrap();
+    let str = stdin.to_string();
+    let boxed: Box<dyn Iterator<Item = char>> = Box::new(str.chars());
+    let insertable = InsertableIterator::from(boxed);
+
+    context.with(move |ctx| {
+        let mut h4 = H4::new(insertable, ctx);
         for _ in 0..1000 {
             h4.advance();
         }

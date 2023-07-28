@@ -1,12 +1,12 @@
 use std::iter::Peekable;
 use std::collections::VecDeque;
 
-pub struct InsertableIterator<T> {
+pub struct InsertableIterator<'a, T> {
     inserted: VecDeque<T>,
-    iter: Peekable<Box<dyn Iterator<Item = T>>>,
+    iter: Peekable<Box<dyn Iterator<Item = T> + 'a>>,
 }
 
-impl<T> InsertableIterator<T> {
+impl<T> InsertableIterator<'_, T> {
     pub fn insert_elements(&mut self, input: Vec<T>) {
         // TODO: Make faster
         for el in input.into_iter().rev() {
@@ -23,15 +23,15 @@ impl<T> InsertableIterator<T> {
         }
     }
 
-    pub fn new(iter: Box<dyn Iterator<Item = T>>) -> Self {
-        return Self {
+    pub fn new<'a>(iter: Box<dyn Iterator<Item = T> + 'a>) -> InsertableIterator<'a, T> {
+        return InsertableIterator {
             iter: iter.peekable(),
             inserted: VecDeque::new(),
         }
     }
 }
 
-impl<T> Iterator for InsertableIterator<T> {
+impl<T> Iterator for InsertableIterator<'_, T> {
     type Item = T;
     
     fn next(&mut self) -> Option<T> {
@@ -41,6 +41,12 @@ impl<T> Iterator for InsertableIterator<T> {
         else {
             return self.iter.next();
         }
+    }
+}
+
+impl<'a, T> std::convert::From<Box<dyn Iterator<Item = T> + 'a>> for InsertableIterator<'a, T> {
+    fn from(iter: Box<dyn Iterator<Item = T> + 'a>) -> Self {
+        return Self::new(iter);
     }
 }
 
@@ -97,5 +103,15 @@ mod tests {
             let consumed = insertable.next();
             assert_eq!(consumed, Some(i));
         }
+    }
+
+    #[test]
+    fn test_from_string() {
+        let string = "A very cool string".to_string();
+        let boxed: Box<dyn Iterator<Item = char>> = Box::new(string.chars());
+
+        let mut iterator = InsertableIterator::from(boxed);
+
+        while iterator.next() != None {}
     }
 }

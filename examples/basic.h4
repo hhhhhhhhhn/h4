@@ -1,0 +1,17 @@
+@define(`word', `APPLE')
+word
+word
+@pushScope
+@define(word, `BANANA')
+@define(`hello', `Hello, @arg0')
+hello(word)
+Some text
+@popScope
+word(one, two),
+`quoted `quotes word `quotes'' text'
+
+@let(`value', `1*4')
+@jsEval(`value')
+@set(`value', `2*3')
+@jsEval(`value')
+@jsEval(`JSON.stringify(value)')

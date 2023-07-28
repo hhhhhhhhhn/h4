@@ -5,13 +5,26 @@ mod scopes;
 use h4::H4;
 use rquickjs::{Runtime, Context};
 use insertable::InsertableIterator;
+use arg::{Args, parse_args};
+
+#[derive(Args, Debug)]
+///h4
+struct Arguments {
+    ///File to be processed. If not specified, stdin is used.
+    file: String
+}
 
 fn main() {
+    let args: Arguments = parse_args();
+    let input = if args.file == "" {
+        std::io::read_to_string(std::io::stdin()).unwrap()
+    } else {
+        std::io::read_to_string(std::fs::File::open(args.file).unwrap()).unwrap()
+    };
+
     let runtime = Runtime::new().unwrap();
     let context = Context::full(&runtime).unwrap();
-    let stdin = std::io::read_to_string(std::io::stdin()).unwrap();
-    let str = stdin.to_string();
-    let boxed: Box<dyn Iterator<Item = char>> = Box::new(str.chars());
+    let boxed: Box<dyn Iterator<Item = char>> = Box::new(input.chars());
     let insertable = InsertableIterator::from(boxed);
 
     context.with(move |ctx| {

@@ -1,9 +1,14 @@
 # TODO
-- Read from stdin
 - Readme
 - For loops
 - Shell evaluations
-- CLI arguments
+- Use iterators instead of Strings
+- Imports
 - Javascript functions (e.g. fetch)
 - Examples
 - Man page
+- Clean up types
+
+## Done
+- Read from stdin
+- CLI arguments

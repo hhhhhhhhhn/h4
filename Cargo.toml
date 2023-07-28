@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 rquickjs="*"
+arg= { version = "*", features = ["std"] }

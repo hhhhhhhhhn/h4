@@ -35,6 +35,14 @@ impl<'a> Scopes<'a> {
         scopes.pop();
     }
 
+    pub fn clear(&self) {
+        while self.scopes.borrow().len() > 1 {
+            self.pop_scope();
+        }
+        let scopes = Rc::clone(&self.scopes);
+        *scopes.borrow_mut() = vec![HashMap::new()];
+    }
+
     pub fn get_variable(&self, name: &String) -> Option<Rc<RefCell<Value<'a>>>> {
         let scopes = Rc::clone(&self.scopes);
         let scopes = &mut scopes.borrow_mut();

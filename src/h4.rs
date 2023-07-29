@@ -131,9 +131,10 @@ impl<'h, 'b> H4<'h, 'b> {
 
             let h4Proxy = new Proxy({}, h4Handler)
 
+            let values = []
+
             function h4Eval(script) {
-                // debugPrint("Evaluating " + script)
-                return Function("h4Proxy", 'with(h4Proxy) {return (' + script + ')}')(h4Proxy);
+                return Function("h4Proxy", 'with(h4Proxy) {return (' + script + ')}')(h4Proxy)
             }
         "#).expect("Cannot intialize QuickJS variables")
     }
@@ -161,7 +162,7 @@ impl<'h, 'b> H4<'h, 'b> {
     pub fn js_value_to_string(&self, value: rquickjs::Value<'h>) -> String {
         let str = self.ctx.eval::<rquickjs::Function, &str>("String").expect("String not found");
         let result: rquickjs::String = str.call((value,)).expect("Could not evaluate");
-        return result.to_string().unwrap_or_else(|_| "<QuickJS Error>".to_string());
+        return result.to_string().unwrap_or_else(|e| format!("`QuickJS Error: {e}'"));
     }
 
     fn write_string(&mut self, str: String) {

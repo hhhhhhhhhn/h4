@@ -1,5 +1,4 @@
 # TODO
-- Fix GC
 - Changing quotes
 - For loops
 - Use iterators instead of Strings
@@ -15,3 +14,4 @@
 - Shell evaluations
 - Readme
 - Imports
+- Fix GC

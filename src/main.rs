@@ -1,6 +1,7 @@
 mod h4;
 mod insertable;
 mod scopes;
+mod builtin;
 
 use h4::H4;
 use rquickjs::{Runtime, Context};

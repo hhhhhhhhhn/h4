@@ -15,3 +15,10 @@ word(one, two),
 @set(`value', `2*3')
 @jsEval(`value')
 @jsEval(`JSON.stringify(value)')
+@let(`jsmacro', `"Hello from JS"')
+
+jsmacro
+
+The current date is: @shell(`date')
+
+The same inside javascript: @jsEval(`shell("date")')

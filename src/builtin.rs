@@ -2,6 +2,7 @@ use std::rc::Rc;
 use crate::H4;
 use crate::scopes::Value;
 use std::process::Command;
+use std::fs;
 
 pub fn builtin_define(h4: &mut H4, args: &Vec<String>) -> String {
     let scopes = Rc::clone(&mut h4.scopes);
@@ -49,6 +50,18 @@ pub fn builtin_jseval(h4: &mut H4, args: &Vec<String>) -> String {
     return value
 }
 
+pub fn builtin_import(h4: &mut H4, args: &Vec<String>) -> String {
+    let value = match args.get(0) {
+        Some(file) => {
+            fs::read_to_string(file)
+                .unwrap_or_else(|e| format!("`Could not read file {e}'"))
+        }
+        None => "`No file provided'".to_string(),
+    };
+    h4.iter.next();
+    return value
+}
+
 pub fn builtin_dump(h4: &mut H4, _args: &Vec<String>) -> String {
     let scopes = Rc::clone(&h4.scopes.scopes);
     let scopes = scopes.borrow();
@@ -85,12 +98,12 @@ pub fn run_shell(command: String) -> String {
             }
             return stdout
         })
-        .unwrap_or_else(|e| format!("Program exited with error: {e}"));
+        .unwrap_or_else(|e| format!("`Program exited with error: {e}'"));
 }
 
 pub fn builtin_shell(_h4: &mut H4, args: &Vec<String>) -> String {
     match args.get(0) {
         Some(command) => return run_shell(command.clone()),
-        None => return "Command not found".to_string()
+        None => return "`Command not found'".to_string()
     }
 }

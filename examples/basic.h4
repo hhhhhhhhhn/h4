@@ -22,3 +22,6 @@ jsmacro
 The current date is: @shell(`date')
 
 The same inside javascript: @jsEval(`shell("date")')
+
+@import(`examples/sum.h4')
+@jsEval(`sum(1, 2)')

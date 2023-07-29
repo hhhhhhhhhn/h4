@@ -1,8 +1,8 @@
 # TODO
-- Readme
+- Fix GC
+- Changing quotes
 - For loops
 - Use iterators instead of Strings
-- Imports
 - Javascript functions (e.g. fetch)
 - Using Javascript functions as macros
 - Examples
@@ -13,3 +13,5 @@
 - Read from stdin
 - CLI arguments
 - Shell evaluations
+- Readme
+- Imports

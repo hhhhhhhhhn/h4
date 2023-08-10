@@ -39,8 +39,14 @@ pub fn builtin_pop_scope(h4: &mut H4, _args: &Vec<String>) -> String {
     return String::new()
 }
 
-pub fn builtin_skip(h4: &mut H4, _args: &Vec<String>) -> String {
-    h4.iter.next();
+pub fn builtin_skip(h4: &mut H4, args: &Vec<String>) -> String {
+    let mut times = 1;
+    if let Some(arg) = args.get(0) {
+        times = arg.parse::<i32>().unwrap_or(0);
+    }
+    for _ in 0..times {
+        h4.iter.next();
+    }
     return String::new()
 }
 

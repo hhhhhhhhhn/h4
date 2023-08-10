@@ -1,0 +1,40 @@
+#include <stdlib.h>
+@define(`@vec_def', `
+@define(`@type', @arg0)
+@define(`@vectype', @type`_vec')
+typedef struct @vectype {
+	@type *array;
+	int cap;
+	int len;
+} @vectype;
+
+@vectype* @vectype`_new'() {
+	@vectype *vec = malloc(sizeof(@vectype));
+	vec->cap = 32;
+	vec->len = 0;
+	vec->array = malloc(vec->cap * sizeof(@type));
+	return vec;
+}
+
+void @vectype`_push'(@vectype *vec, @type val) {
+	if (vec->len == vec->cap) {
+		vec->cap *= 2; vec->array = realloc(vec->array, vec->cap * sizeof(@type));
+	}
+	vec->array[vec->len] = val;
+	vec->len++;
+}
+
+@type @vectype`_pop'(@vectype *vec) {
+	vec->len--;
+	return vec->array[vec->len];
+}
+
+void @vectype`_free'(@vectype *vec) {
+	free(vec->array);
+	free(vec);
+}') @skip(2)
+
+@vec_def(`long')
+@vec_def(`int')
+@vec_def(`char')
+@vec_def(`float')

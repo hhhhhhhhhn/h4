@@ -29,8 +29,7 @@ fn main() {
     let insertable = InsertableIterator::from(boxed);
 
     context.with(move |ctx| {
-        let mut h4 = H4::new(insertable, ctx);
-        h4.consume();
+        let mut h4 = H4::new(insertable, ctx); h4.consume();
         h4.scopes.clear(); // NOTE: Necessary or QuickJS complains about leaked memory
     })
 }

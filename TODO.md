@@ -2,7 +2,6 @@
 - Changing quotes
 - Use iterators instead of Strings
 - Javascript functions (e.g. fetch)
-- Using Javascript functions as macros
 - Man page
 - Clean up types
 
@@ -15,3 +14,4 @@
 - Fix GC
 - For loops
 - Examples
+- Using Javascript functions as macros

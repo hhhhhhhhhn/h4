@@ -201,7 +201,12 @@ impl<'h, 'b> H4<'h, 'b> {
             }
             Value::JS(value) => {
                 if value.is_function() {
-                    unimplemented!()
+                    let value = value.as_function().unwrap();
+                    let caller: rquickjs::Function =
+                        self.ctx.eval("(f, args) => f(...args)").unwrap();
+                    let result: rquickjs::String = caller.call((value.as_value(), args))
+                        .expect("Function must return string");
+                    return result.to_string().expect("Function does not return valid string")
                 }
                 return self.js_value_to_string(value.clone());
             }

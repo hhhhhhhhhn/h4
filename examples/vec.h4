@@ -34,7 +34,5 @@ void @vectype`_free'(@vectype *vec) {
 	free(vec);
 }') @skip(2)
 
-@vec_def(`long')
-@vec_def(`int')
-@vec_def(`char')
-@vec_def(`float')
+@let(`@types', `["long", "int", "char", "float"]')
+@for(`@type', `@types', `@vec_def(@type)@newline')

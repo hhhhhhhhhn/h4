@@ -54,6 +54,8 @@ impl<'h, 'b> H4<'h, 'b> {
             scopes.let_variable(&"@get".to_string(), Value::Builtin(builtin_get));
             scopes.let_variable(&"@shell".to_string(), Value::Builtin(builtin_shell));
             scopes.let_variable(&"@import".to_string(), Value::Builtin(builtin_import));
+            scopes.let_variable(&"@for".to_string(), Value::Builtin(builtin_for));
+            scopes.let_variable(&"@newline".to_string(), Value::Plain("\n".to_string()));
 
             let h4 = H4{
                 iter,

@@ -3,6 +3,7 @@ use crate::H4;
 use crate::scopes::Value;
 use std::process::Command;
 use std::fs;
+use rquickjs;
 
 pub fn builtin_define(h4: &mut H4, args: &Vec<String>) -> String {
     let scopes = Rc::clone(&mut h4.scopes);
@@ -15,6 +16,60 @@ pub fn builtin_let(h4: &mut H4, args: &Vec<String>) -> String {
     h4.scopes.let_variable(&args[0], Value::JS(h4.eval_js(args[1].clone())));
     h4.iter.next();
     return String::new()
+}
+
+pub fn builtin_for(h4: &mut H4, args: &Vec<String>) -> String {
+    if args.len() < 3 {
+        panic!("Not enough arguments")
+    }
+
+    let name = &args[0];
+    let list = h4.scopes.get_variable(&args[1]);
+    let body = &args[2];
+
+
+    match list {
+        None => panic!("Error: {} does not exist", &args[0]),
+        Some(value) => {
+            let value = Rc::clone(&value);
+            let value = value.borrow().clone();
+
+            match value {
+                Value::Plain(_) => {
+                    panic!("Error: {} is a string, not a list.", &args[0])
+                }
+                Value::JS(js_value) => {
+                    if !js_value.is_array() {
+                        panic!("Error: {} is not a list.", &args[0])
+                    }
+                    let list = js_value.as_array().unwrap();
+
+                    let mut evaluated = String::new();
+
+                    for element in list.iter() {
+                        match element {
+                            Ok(v) => {
+                                let v: rquickjs::Value = v;
+                                let str = h4.js_value_to_string(v);
+                                evaluated.push_str("`'@pushScope\n");
+                                evaluated.push_str(&format!("@define(`{}', `{}')\n", name, str));
+                                evaluated.push_str(body);
+                                evaluated.push_str("`'@popScope\n");
+                            },
+                            Err(e) => {
+                                panic!("Error: {}", e);
+                            }
+                        }
+                    }
+
+                    return evaluated
+                }
+                Value::Builtin(_) => {
+                    panic!("Error: {} is a builtin function, not a list.", &args[0])
+                }
+            }
+        }
+    }
 }
 
 pub fn builtin_set(h4: &mut H4, args: &Vec<String>) -> String {

@@ -1,10 +1,12 @@
 #include <stdlib.h>
+@skip(2)
 
 @let(`@simplify', `(str) => str.replaceAll(" ", "_")')
+@skip(2)
 
 @define(`@vec_def', `
 @define(`@type', @arg0)
-@define(`@vectype', `@simplify(@type`_vec')')
+@define(`@vectype', @simplify(@type)`_vec')
 typedef struct @vectype {
 	@type *array;
 	int cap;
@@ -35,7 +37,8 @@ void @vectype`_push'(@vectype *vec, @type val) {
 void @vectype`_free'(@vectype *vec) {
 	free(vec->array);
 	free(vec);
-}') @skip(2)
+}')
+@skip(2)
 
 @let(`@types', `["long", "int", "char", "float", "unsigned int", "double"]')
 @for(`@type', `@types', `@vec_def(@type)@newline')

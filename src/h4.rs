@@ -307,4 +307,3 @@ impl<'h, 'b> H4<'h, 'b> {
         return name
     }
 }
-

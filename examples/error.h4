@@ -1,0 +1,3 @@
+@let(`@simplify', `str => str.replace(" ", "_")')@skip
+@simplify(hello there)
+@define(`@variable', @simplify(hello there))

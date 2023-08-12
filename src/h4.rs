@@ -23,7 +23,7 @@ pub struct H4<'a, 'b> {
     pub scopes: Rc<Scopes<'a>>,
     pub ctx: Rc<Ctx<'a>>,
     pub quote_level: usize,
-    pub in_call: bool,
+    pub call_level: u32,
 
     pub name_chars: String,
     pub quote_start: char,
@@ -68,7 +68,7 @@ impl<'h, 'b> H4<'h, 'b> {
                 quote_start: '`',
                 quote_end: '\'',
                 quote_level: 0,
-                in_call: false,
+                call_level: 0,
             };
 
             h4.setup_quickjs();
@@ -243,7 +243,7 @@ impl<'h, 'b> H4<'h, 'b> {
                 Some(value) => {
                     let mut args: Vec<String> = Vec::new();
                     if self.iter.peek() == Some(&'(') {
-                        self.in_call = true;
+                        self.call_level += 1;
                         self.iter.next();
                         let mut id = new_id();
                         let previous_output = self.current_output.clone();
@@ -256,7 +256,7 @@ impl<'h, 'b> H4<'h, 'b> {
                                         .map(|x| x.clone())
                                         .unwrap_or_else(|| String::new())
                                 );
-                                self.outputs.remove(&id); // TODO: Not borrow // TODO: Not borrow
+                                self.outputs.remove(&id); // TODO: Not borrow
                                 id = new_id();
                                 self.current_output = id.clone();
                             }
@@ -272,9 +272,9 @@ impl<'h, 'b> H4<'h, 'b> {
                 }
             }
         }
-        if self.in_call {
+    if self.call_level > 0 {
             if chr == ')' {
-                self.in_call = false;
+                self.call_level -= 1;
                 self.iter.next();
                 return Some(AdvanceResult::CallEnd)
             }

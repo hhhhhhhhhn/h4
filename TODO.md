@@ -4,6 +4,7 @@
 - Javascript functions (e.g. fetch)
 - Man page
 - Clean up types
+- Fix consuming char after closing parentheses
 
 ## Done
 - Read from stdin

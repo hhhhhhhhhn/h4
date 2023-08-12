@@ -20,7 +20,7 @@ pub fn builtin_let(h4: &mut H4, args: &Vec<String>) -> String {
 
 pub fn builtin_for(h4: &mut H4, args: &Vec<String>) -> String {
     if args.len() < 3 {
-        panic!("Not enough arguments")
+        panic!("@for: Not enough arguments")
     }
 
     let name = &args[0];
@@ -29,18 +29,18 @@ pub fn builtin_for(h4: &mut H4, args: &Vec<String>) -> String {
 
 
     match list {
-        None => panic!("Error: {} does not exist", &args[0]),
+        None => panic!("@for: {} does not exist", &args[0]),
         Some(value) => {
             let value = Rc::clone(&value);
             let value = value.borrow().clone();
 
             match value {
                 Value::Plain(_) => {
-                    panic!("Error: {} is a string, not a list.", &args[0])
+                    panic!("@for: {} is a string, not a list.", &args[0])
                 }
                 Value::JS(js_value) => {
                     if !js_value.is_array() {
-                        panic!("Error: {} is not a list.", &args[0])
+                        panic!("@for: {} is not a list.", &args[0])
                     }
                     let list = js_value.as_array().unwrap();
 
@@ -57,7 +57,7 @@ pub fn builtin_for(h4: &mut H4, args: &Vec<String>) -> String {
                                 evaluated.push_str("`'@popScope\n");
                             },
                             Err(e) => {
-                                panic!("Error: {}", e);
+                                panic!("@for: {}", e);
                             }
                         }
                     }
@@ -65,7 +65,7 @@ pub fn builtin_for(h4: &mut H4, args: &Vec<String>) -> String {
                     return evaluated
                 }
                 Value::Builtin(_) => {
-                    panic!("Error: {} is a builtin function, not a list.", &args[0])
+                    panic!("@for: {} is a builtin function, not a list.", &args[0])
                 }
             }
         }
@@ -115,9 +115,9 @@ pub fn builtin_import(h4: &mut H4, args: &Vec<String>) -> String {
     let value = match args.get(0) {
         Some(file) => {
             fs::read_to_string(file)
-                .unwrap_or_else(|e| format!("`Could not read file {e}'"))
+                .unwrap_or_else(|e| panic!("@import: Could not read file {e}"))
         }
-        None => "`No file provided'".to_string(),
+        None => panic!("@import: No file provided")
     };
     h4.iter.next();
     return value
@@ -159,12 +159,12 @@ pub fn run_shell(command: String) -> String {
             }
             return stdout
         })
-        .unwrap_or_else(|e| format!("`Program exited with error: {e}'"));
+        .unwrap_or_else(|e| panic!("@shell: Program exited with error: {e}"));
 }
 
 pub fn builtin_shell(_h4: &mut H4, args: &Vec<String>) -> String {
     match args.get(0) {
         Some(command) => return run_shell(command.clone()),
-        None => return "`Command not found'".to_string()
+        None => panic!("@shell: Command not found'")
     }
 }

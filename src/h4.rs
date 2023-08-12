@@ -164,7 +164,7 @@ impl<'h, 'b> H4<'h, 'b> {
     pub fn js_value_to_string(&self, value: rquickjs::Value<'h>) -> String {
         let str = self.ctx.eval::<rquickjs::Function, &str>("String").expect("String not found");
         let result: rquickjs::String = str.call((value,)).expect("Could not evaluate");
-        return result.to_string().unwrap_or_else(|e| format!("`QuickJS Error: {e}'"));
+        return result.to_string().unwrap_or_else(|e| panic!("QuickJS Error: {e}"));
     }
 
     fn write_string(&mut self, str: String) {

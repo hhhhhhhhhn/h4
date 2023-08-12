@@ -266,13 +266,14 @@ impl<'h, 'b> H4<'h, 'b> {
                         }
                         self.current_output = previous_output;
                     }
-                    let evaluated = self.eval_macro(&value.borrow(), &args);
+                    let mut evaluated = self.eval_macro(&value.borrow(), &args);
+                    evaluated.push_str("`'");
                     self.insert_input(evaluated);
                     return Some(AdvanceResult::Macro)
                 }
             }
         }
-    if self.call_level > 0 {
+        if self.call_level > 0 {
             if chr == ')' {
                 self.call_level -= 1;
                 self.iter.next();

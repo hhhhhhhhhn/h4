@@ -1,3 +1,6 @@
-@let(`@simplify', `str => str.replace(" ", "_")')@skip
+@let(`@simplify', `str => str.replaceAll(" ", "_")')
 @simplify(hello there)
 @define(`@variable', @simplify(hello there))
+
+Do not @simplify(print a new)@skip
+line.

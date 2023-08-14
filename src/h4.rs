@@ -72,6 +72,10 @@ impl<'h, 'b> H4<'h, 'b> {
             };
 
             h4.setup_quickjs();
+
+            let push = h4.eval_js("h4Push".to_string());
+            assert!(push.is_function());
+            h4.scopes.let_variable(&"@push".to_string(), Value::JS(push.clone()));
             return h4
     }
 
@@ -134,6 +138,12 @@ impl<'h, 'b> H4<'h, 'b> {
             let h4Proxy = new Proxy({}, h4Handler)
 
             let values = []
+
+            function h4Push(list, ...args) {
+                list = h4Proxy[list]
+                list.push(...args)
+                return "@skip(3)" // This is flaky, depends on evaluation ending with `'
+            }
 
             function h4Eval(script) {
                 return Function("h4Proxy", 'with(h4Proxy) {return (' + script + ')}')(h4Proxy)
@@ -204,9 +214,10 @@ impl<'h, 'b> H4<'h, 'b> {
                     let value = value.as_function().unwrap();
                     let caller: rquickjs::Function =
                         self.ctx.eval("(f, args) => f(...args)").unwrap();
-                    let result: rquickjs::String = caller.call((value.as_value(), args))
-                        .expect("Function must return string");
-                    return result.to_string().expect("Function does not return valid string")
+                    let result: rquickjs::Value = caller.call((value.as_value(), args))
+                        .expect("Error executing value");
+                    let as_string = result.as_string().expect("Function must return a string");
+                    return as_string.to_string().expect("Function does not return valid string")
                 }
                 return self.js_value_to_string(value.clone());
             }

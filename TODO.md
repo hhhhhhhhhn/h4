@@ -2,9 +2,9 @@
 - Changing quotes
 - Use iterators instead of Strings
 - Javascript functions (e.g. fetch)
+  - Evaluating macros from JS
 - Man page
 - Clean up types
-- Fix consuming char after closing parentheses
 
 ## Done
 - Read from stdin
@@ -16,3 +16,5 @@
 - For loops
 - Examples
 - Using Javascript functions as macros
+- Fix consuming char after closing parentheses
+- Built-in push function

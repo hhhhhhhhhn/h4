@@ -23,7 +23,8 @@ typedef struct @vectype {
 
 void @vectype`_push'(@vectype *vec, @type val) {
 	if (vec->len == vec->cap) {
-		vec->cap *= 2; vec->array = realloc(vec->array, vec->cap * sizeof(@type));
+		vec->cap *= 2;
+		vec->array = realloc(vec->array, vec->cap * sizeof(@type));
 	}
 	vec->array[vec->len] = val;
 	vec->len++;
@@ -40,5 +41,6 @@ void @vectype`_free'(@vectype *vec) {
 }')
 @skip(2)
 
-@let(`@types', `["long", "int", "char", "float", "unsigned int", "double"]')
+@let(`@types', `[]')
+@push(`@types', `long', `int', `char', `float', `unsigned int', `double')
 @for(`@type', `@types', `@vec_def(@type)@newline')

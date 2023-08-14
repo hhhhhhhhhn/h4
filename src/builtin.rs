@@ -23,6 +23,7 @@ pub fn builtin_for(h4: &mut H4, args: &Vec<String>) -> String {
         panic!("@for: Not enough arguments")
     }
 
+    h4.iter.next();
     let name = &args[0];
     let list = h4.scopes.get_variable(&args[1]);
     let body = &args[2];
